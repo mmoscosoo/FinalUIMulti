@@ -1,56 +1,40 @@
 import streamlit as st
-from openai import OpenAI
-from gtts import gTTS
-import os
-from deep_translator import GoogleTranslator
+import openai
 
-# Configura cliente OpenAI con la clave de secretos
-client = OpenAI(api_key=st.secrets["openai_api_key"])
+st.set_page_config(page_title="Generador de Historias", layout="centered")
 
-# Función para generar la historia
-def generar_historia(animal, lugar):
-    prompt = f"Escribe una historia corta sobre un {animal} que vive en {lugar}."
+st.title("📚 Generador de Historias con IA")
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # Usa "gpt-4" si tienes acceso
-        messages=[
-            {"role": "system", "content": "Eres un narrador de cuentos infantiles."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7,
-        max_tokens=500
-    )
+# Input de la clave API
+api_key = st.text_input("🔐 Ingresa tu clave de API de OpenAI", type="password")
 
-    historia = response.choices[0].message.content
-    return historia
+# Inputs para la historia
+animal = st.text_input("🦊 Dime un animal")
+lugar = st.text_input("📍 Dime un lugar")
 
-# Función para traducir la historia
-def traducir_texto(texto, idioma_destino):
-    return GoogleTranslator(source='auto', target=idioma_destino).translate(texto)
+def generar_historia(api_key, animal, lugar):
+    openai.api_key = api_key
+    
+    prompt = f"Escribe una historia para niños protagonizada por un {animal} en {lugar}."
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.8,
+            max_tokens=500
+        )
+        return response["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
 
-# Función para convertir texto en audio
-def texto_a_audio(texto, idioma):
-    tts = gTTS(text=texto, lang=idioma)
-    tts.save("historia.mp3")
-    return "historia.mp3"
-
-# Interfaz de usuario
-st.title("Generador de Cuentos Infantiles")
-
-animal = st.text_input("Ingresa un animal:")
-lugar = st.text_input("Ingresa un lugar:")
-idioma = st.selectbox("Selecciona un idioma para la historia:", ["es", "en", "fr", "de"])
-
-if st.button("Generar historia"):
-    if animal and lugar:
-        historia = generar_historia(animal, lugar)
-        historia_traducida = traducir_texto(historia, idioma)
-        st.markdown("### Historia:")
-        st.write(historia_traducida)
-
-        ruta_audio = texto_a_audio(historia_traducida, idioma)
-        st.audio(ruta_audio)
+# Botón para generar historia
+if st.button("✏️ Generar historia"):
+    if not api_key:
+        st.error("Por favor, ingresa tu clave de API.")
+    elif not animal or not lugar:
+        st.warning("Por favor, completa ambos campos: animal y lugar.")
     else:
-        st.warning("Por favor, completa todos los campos.")
-
-
+        historia = generar_historia(api_key, animal, lugar)
+        st.markdown("### 📝 Tu historia:")
+        st.write(historia)
