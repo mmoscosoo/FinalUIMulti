@@ -1,6 +1,6 @@
 streamlit
 paho-mqtt
-openai>=1.0.0
+openai
 gtts
 deep-translator
 
