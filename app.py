@@ -4,13 +4,15 @@ import paho.mqtt.client as mqtt
 import time
 from openai import OpenAI
 from deep_translator import GoogleTranslator
+from gtts import gTTS
+import os
 
-# Configuración del broker MQTT
+# MQTT Configuración
 MQTT_BROKER = "broker.mqttdashboard.com"
 MQTT_PORT = 1883
 MQTT_TOPIC = "selector/animal"
 
-# Variables de sesión
+# Estados iniciales
 if 'sensor_data' not in st.session_state:
     st.session_state.sensor_data = None
 if 'api_key' not in st.session_state:
@@ -18,7 +20,7 @@ if 'api_key' not in st.session_state:
 if 'language' not in st.session_state:
     st.session_state.language = 'es'
 
-# Función para obtener mensaje MQTT
+# MQTT - recibir datos del ESP32
 def get_mqtt_message():
     message_received = {"received": False, "payload": None}
 
@@ -50,7 +52,7 @@ def get_mqtt_message():
         st.error(f"Error de conexión: {e}")
         return None
 
-# Función para generar historia con OpenAI
+# Historia generada por OpenAI
 def generar_historia(animal, lugar, api_key, idioma_destino='es'):
     client = OpenAI(api_key=api_key)
 
@@ -83,21 +85,31 @@ def generar_historia(animal, lugar, api_key, idioma_destino='es'):
         st.error(f"No se pudo generar la historia: {e}")
         return None
 
-# Interfaz Streamlit
+# Convertir texto a voz
+def convertir_a_audio(texto, idioma='es', filename='historia.mp3'):
+    try:
+        tts = gTTS(text=texto, lang=idioma)
+        tts.save(filename)
+        return filename
+    except Exception as e:
+        st.error(f"No se pudo convertir el texto a audio: {e}")
+        return None
+
+# UI principal
 st.set_page_config(page_title="Juego Animal y Lugar", page_icon="🧸")
 st.title("🐾 Juego de Aventuras Interactivas")
 
-# Ingreso de API Key y selección de idioma
+# Entrada de API Key y selector de idioma
 st.session_state.api_key = st.text_input("🔑 Ingresa tu OpenAI API Key:", type="password")
 st.session_state.language = st.selectbox("🌐 Idioma de la historia:", ['es', 'en', 'fr', 'de', 'pt'])
 
-# Botón para obtener datos del ESP32
+# Botón de obtención de datos
 if st.button("📡 Obtener Lectura del ESP32"):
     with st.spinner("Esperando datos..."):
         data = get_mqtt_message()
         st.session_state.sensor_data = data
 
-# Mostrar datos y generar historia
+# Mostrar datos y generar historia + audio
 if st.session_state.sensor_data:
     st.success("✅ Datos recibidos")
     animal = st.session_state.sensor_data.get("animal", "N/A")
@@ -111,8 +123,16 @@ if st.session_state.sensor_data:
         if historia:
             st.markdown("### 📖 Historia Generada")
             st.write(historia)
+
+            # Convertir a audio
+            st.markdown("### 🔊 Escucha la historia")
+            archivo_audio = convertir_a_audio(historia, idioma=st.session_state.language)
+            if archivo_audio:
+                with open(archivo_audio, "rb") as audio_file:
+                    st.audio(audio_file.read(), format="audio/mp3")
     else:
         st.warning("Por favor, ingresa tu API Key para generar la historia.")
 else:
     st.info("Haz clic en el botón para recibir los datos del ESP32.")
+
 
