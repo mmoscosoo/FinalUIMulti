@@ -19,8 +19,14 @@ if 'sensor_data' not in st.session_state:
     st.session_state.sensor_data = None
 if 'language' not in st.session_state:
     st.session_state.language = 'es'
-if 'openai_key' not in st.session_state:
-    st.session_state.openai_key = ''
+
+# --- Interfaz: Ingreso de API key
+st.set_page_config(page_title="Animal y Lugar", page_icon="🌍")
+st.title("🌟 Aventura Interactiva: Animal y Lugar")
+
+st.text_input("🔑 Ingresa tu clave de OpenAI", type="password", key="openai_key", placeholder="sk-...")
+st.selectbox("🌐 Selecciona idioma", options=["es", "en", "fr", "pt"], key="language",
+             format_func=lambda x: {"es": "Español", "en": "Inglés", "fr": "Francés", "pt": "Portugués"}[x])
 
 # --- Función para recibir mensaje del ESP32
 def get_mqtt_message():
@@ -48,26 +54,28 @@ def get_mqtt_message():
         st.error(f"Error de conexión: {e}")
         return None
 
-# --- Función para generar historia con GPT
+# --- Generar historia larga
 def generar_historia(animal, lugar, api_key):
     openai.api_key = api_key
     prompt = (
-        f"Escribe una historia creativa y divertida para niños de al menos un párrafo, "
-        f"que tenga como protagonista a un {animal} que vive en {lugar}. "
-        f"La historia debe ser mágica, entretenida y educativa. No debe ser una lista, sino una narración completa."
+        f"Escribe una historia creativa, divertida y mágica para niños, "
+        f"de al menos 3 párrafos completos, donde el protagonista sea un {animal} que vive o viaja a {lugar}. "
+        f"Debe incluir una pequeña aventura o dilema y una enseñanza final. "
+        f"La narrativa debe ser rica en detalles y fácil de imaginar visualmente."
     )
     try:
         respuesta = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Eres un narrador de cuentos mágicos para niños."},
+                {"role": "system", "content": "Eres un narrador mágico de cuentos para niños."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.8,
-            max_tokens=400
+            temperature=0.85,
+            max_tokens=700
         )
         historia = respuesta.choices[0].message.content.strip()
 
+        # Traducir si el idioma no es español
         if st.session_state.language != 'es':
             historia = GoogleTranslator(source='auto', target=st.session_state.language).translate(historia)
 
@@ -77,7 +85,7 @@ def generar_historia(animal, lugar, api_key):
         st.error(f"No se pudo generar la historia: {e}")
         return f"Había una vez un {animal} que vivía en {lugar}..."
 
-# --- Función para texto a voz
+# --- Texto a voz
 def reproducir_audio(texto):
     try:
         tts = gTTS(text=texto, lang=st.session_state.language)
@@ -89,20 +97,11 @@ def reproducir_audio(texto):
     except Exception as e:
         st.error("No se pudo generar el audio")
 
-# --- Función para imagen desde Unsplash
+# --- Imagen ilustrativa
 def obtener_imagen(animal, lugar):
     query = f"{animal} en {lugar}"
     url = f"https://source.unsplash.com/600x400/?{query}"
     st.image(url, caption=f"{animal.title()} en {lugar.title()}")
-
-# --- Interfaz
-st.set_page_config(page_title="Animal y Lugar", page_icon="🌍")
-st.title("🌟 Aventura Interactiva: Animal y Lugar")
-
-# --- Input de API Key
-st.text_input("🔑 Ingresa tu clave de OpenAI", type="password", key="openai_key")
-st.selectbox("🌐 Selecciona idioma", options=["es", "en", "fr", "pt"], key="language",
-             format_func=lambda x: {"es": "Español", "en": "Inglés", "fr": "Francés", "pt": "Portugués"}[x])
 
 # --- Botón para obtener datos
 if st.button("📡 Obtener Lectura del ESP32"):
@@ -113,7 +112,7 @@ if st.button("📡 Obtener Lectura del ESP32"):
             data = get_mqtt_message()
             st.session_state.sensor_data = data
 
-# --- Visualización de historia
+# --- Mostrar historia si hay datos
 if st.session_state.sensor_data and st.session_state.openai_key:
     st.success("✅ Datos recibidos correctamente")
     animal = st.session_state.sensor_data.get("animal", "N/A")
@@ -131,6 +130,7 @@ if st.session_state.sensor_data and st.session_state.openai_key:
     st.subheader("🖼️ Imagen sugerida")
     obtener_imagen(animal, lugar)
 elif not st.session_state.openai_key:
-    st.info("🔑 Ingresa tu clave de OpenAI para generar una historia mágica.")
+    st.info("🔑 Ingresa tu clave de OpenAI para generar la historia.")
 else:
     st.info("Presiona el botón para obtener los datos actuales desde el ESP32.")
+
