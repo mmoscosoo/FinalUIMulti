@@ -1,2 +1,5 @@
 streamlit
 paho-mqtt
+openai
+gtts
+deep-translator
