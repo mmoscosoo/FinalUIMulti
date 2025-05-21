@@ -7,11 +7,10 @@ from deep_translator import GoogleTranslator
 import os
 from io import BytesIO
 import base64
-import openai  # Asegúrate de tener tu API Key de OpenAI
+from openai import OpenAI  # NUEVO
 
 # Configura tu API Key de OpenAI
-openai.api_key = st.secrets["openai_api_key"]
-
+client = OpenAI(api_key=st.secrets["openai_api_key"])  # NUEVO
 
 MQTT_BROKER = "broker.mqttdashboard.com"
 MQTT_PORT = 1883
@@ -62,9 +61,12 @@ def get_mqtt_message():
 # 🧠 IA: Generar historia
 def generar_historia(animal, lugar):
     prompt = f"Cuéntame una historia para niños donde un {animal} vive una aventura en {lugar}. Usa un lenguaje sencillo y divertido."
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[
+            {"role": "system", "content": "Eres un narrador de historias infantiles."},
+            {"role": "user", "content": prompt}
+        ]
     )
     historia = response.choices[0].message.content.strip()
     return historia
@@ -114,6 +116,7 @@ if st.session_state.sensor_data:
     if st.session_state.story:
         st.subheader("📖 Historia")
         st.write(st.session_state.story)
+
 
         st.subheader("🎧 Escucha la historia")
         st.audio(st.session_state.audio, format='audio/mp3')
