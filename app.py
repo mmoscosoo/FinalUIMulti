@@ -10,7 +10,7 @@ import base64
 import openai  # Asegúrate de tener tu API Key de OpenAI
 
 # Configura tu API Key de OpenAI
-openai.api_key = st.secrets["openai_api_key"]
+openai.api_key = st.secrets["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"]
 
 MQTT_BROKER = "broker.mqttdashboard.com"
 MQTT_PORT = 1883
